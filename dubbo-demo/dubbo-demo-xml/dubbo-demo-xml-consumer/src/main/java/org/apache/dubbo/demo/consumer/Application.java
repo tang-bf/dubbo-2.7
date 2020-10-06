@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  * mvn install -Dmaven.test.skip=true
  * mvn idea:idea
  *
- * dubbo  负载均衡  集群容错 服务降级 本地存根stub  本地伪装mock callback 异步调用 管理台
+ * dubbo  负载均衡  集群容错 服务降级 本地存根stub  本地伪装mock callback 异步调用   泛华调用 管理台
  * spi 整合spring  服务导出  服务引入 服务调用 服务容错负载均衡
  * dubbo源码解析
  * 缺省协议，使用基于 mina 1.1.7 和 hessian 3.2.1 的 tbremoting 交互。
