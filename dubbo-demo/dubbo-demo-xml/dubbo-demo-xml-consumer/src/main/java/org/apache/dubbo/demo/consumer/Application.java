@@ -22,9 +22,17 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
+/** tars消息染色什么意思？
+ * Tars是基于名字服务使用Tars协议的高性能RPC开发框架，
+ * 同时配套一体化的服务治理平台，帮助个人或者企业快速的以微服务的方式构建自己稳定可靠的分布式应用。
+ *dubbo admin 在dubboadmin项目中 java -jar  dubbo-admin-0.2.0-SNAPSHOT.jar (E:\dubboadmin\dubbo-admin-develop\dubbo-admin-develop\dubbo-admin-distribution\target)
+ *root root用户名密码
+ *http://dubbo.apache.org/zh-cn/ecology/index.html
  * mvn install -Dmaven.test.skip=true
  * mvn idea:idea
+ *
+ * dubbo  负载均衡  集群容错 服务降级 本地存根stub  本地伪装mock callback 异步调用 管理台
+ * spi 整合spring  服务导出  服务引入 服务调用 服务容错负载均衡
  * dubbo源码解析
  * 缺省协议，使用基于 mina 1.1.7 和 hessian 3.2.1 的 tbremoting 交互。
  * 底层通信框架从 mina 换成 netty，old 区对象的增长大大减少，50 小时运行，增长不到 200m，无 fullgc。
@@ -59,5 +67,6 @@ public class Application {
         DemoService demoService = context.getBean("demoService", DemoService.class);
         CompletableFuture<String> hello = demoService.sayHelloAsync("world");
         System.out.println("TBH TEST  result: " + hello.get());
+        System.in.read();
     }
 }

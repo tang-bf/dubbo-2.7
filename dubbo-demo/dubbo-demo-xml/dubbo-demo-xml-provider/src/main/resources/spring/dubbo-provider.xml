@@ -20,13 +20,17 @@
        xmlns="http://www.springframework.org/schema/beans"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
        http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
-
+    <!-- 管理台用-->
     <dubbo:application metadata-type="remote" name="demo-provider"/>
     <dubbo:metadata-report address="zookeeper://127.0.0.1:2181"/>
 
     <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
 
-    <dubbo:protocol name="dubbo"/>
+    <!-- 同时支持两种协议-->
+    <dubbo:protocol name="dubbo" port="20880"/>
+<!--
+    <dubbo:protocol name="http"/>
+-->
 
     <bean id="demoService" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>
 
