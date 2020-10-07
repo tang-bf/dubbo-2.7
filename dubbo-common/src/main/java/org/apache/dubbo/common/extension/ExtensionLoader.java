@@ -259,9 +259,10 @@ public class ExtensionLoader<T> {
      */
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> activateExtensions = new ArrayList<>();
+        // // 想加载的扩展点的名字
         List<String> names = values == null ? new ArrayList<>(0) : asList(values);
-        if (!names.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {
-            getExtensionClasses();
+        if (!names.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {//排除 _default
+            getExtensionClasses();//缓存被active注解标记的类
             for (Map.Entry<String, Object> entry : cachedActivates.entrySet()) {
                 String name = entry.getKey();
                 Object activate = entry.getValue();
@@ -277,10 +278,11 @@ public class ExtensionLoader<T> {
                 } else {
                     continue;
                 }
+                //group 想要获取的filter所在的组  activegroup当前遍历的filter所在的组  看是否匹配
                 if (isMatchGroup(group, activateGroup)
                         && !names.contains(name)
                         && !names.contains(REMOVE_VALUE_PREFIX + name)
-                        && isActive(activateValue, url)) {
+                        && isActive(activateValue, url)) {  // 只要url中存在key=activateValue,并且对于的value不为空则验证通过
                     activateExtensions.add(getExtension(name));
                 }
             }
@@ -291,6 +293,7 @@ public class ExtensionLoader<T> {
             String name = names.get(i);
             if (!name.startsWith(REMOVE_VALUE_PREFIX)
                     && !names.contains(REMOVE_VALUE_PREFIX + name)) {
+                //默认的active放在最前面 过滤器filter
                 if (DEFAULT_KEY.equals(name)) {
                     if (!loadedExtensions.isEmpty()) {
                         activateExtensions.addAll(0, loadedExtensions);
@@ -577,7 +580,14 @@ public class ExtensionLoader<T> {
             cachedAdaptiveInstance.set(null);
         }
     }
-
+    //自适应扩展  摘自dubbo官网
+    /*Adaptive 可注解在类或方法上。当 Adaptive 注解在类上时，Dubbo 不会为该类生成代理类。
+    注解在方法（接口方法）上时，Dubbo 则会为该方法生成代理逻辑。Adaptive 注解在类上的情况很少，
+    在 Dubbo 中，仅有两个类被 Adaptive 注解了，分别是 AdaptiveCompiler 和 AdaptiveExtensionFactory。
+    此种情况，表示拓展的加载逻辑由人工编码完成。更多时候，Adaptive 是注解在接口方法上的，
+    表示拓展的加载逻辑需由框架自动生成。Adaptive 注解的地方不同，相应的处理逻辑也是不同的。
+    注解在类上时，处理逻辑比较简单，本文就不分析了。注解在接口方法上时，处理逻辑较为复杂，本章将会重点分析此块逻辑。
+     */
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
         Object instance = cachedAdaptiveInstance.get();
@@ -698,13 +708,20 @@ public class ExtensionLoader<T> {
                 if (method.getAnnotation(DisableInject.class) != null) {
                     continue;
                 }
+                //拿到参数类型
                 Class<?> pt = method.getParameterTypes()[0];
                 if (ReflectUtils.isPrimitives(pt)) {
                     continue;
                 }
 
                 try {
+                    //属性名 会截取setxxx拿到
+                    /*
+                    get properties name for setter, for instance: setVersion, return "version"
+                    * return "", if setter name with length less than 3
+                     */
                     String property = getSetterProperty(method);
+                    //spi  spring  AdaptiveExtensionFactory
                     Object object = objectFactory.getExtension(pt, property);
                     if (object != null) {
                         method.invoke(instance, object);
@@ -1032,23 +1049,33 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // adaptive类中有属性需要注入
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can't create adaptive extension " + type + ", cause: " + e.getMessage(), e);
         }
     }
-
+    // Adaptive类存在的意义就是在调用接口方法时，根据url参数去加载对应的实现类，这样不用提前加载
+    // 对于一个接口你可以手动实现一个Adaptive类，比如AdaptiveExtensionFactory，
+    // 也可以有Dubbo默认给我们实现，在实现的时候会根据接口中的方法是否含有Adaptive注解，
+    // 有注解的方法才会代理，没有注解的方法则不会代理，并且使用代理类调用的时候会抛异常
     private Class<?> getAdaptiveExtensionClass() {
+        //重新 获取下
         getExtensionClasses();
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        //接口没有手动指定adaptive类，就去创建一个  javaassit（默认使用） jdk 变异成class
+        //@SPI("javassist")
+        //public interface Compiler {
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
     private Class<?> createAdaptiveExtensionClass() {
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
         ClassLoader classLoader = findClassLoader();
+        //@SPI("javassist")
+        //public interface Compiler {
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
         return compiler.compile(code, classLoader);
     }

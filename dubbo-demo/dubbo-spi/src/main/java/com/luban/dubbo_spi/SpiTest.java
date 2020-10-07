@@ -19,6 +19,7 @@ public class SpiTest {
     public static void main(String[] args) {
         ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
         Car car1 = extensionLoader.getExtension("car1");
+        Car adaptiveExtension = extensionLoader.getAdaptiveExtension();
         // 先定义warpper类， 这个类必须实现SPI接口
         //warpper类必须以wrapper 结尾命名
         //warpper类的构造方法必须传入SPI接口的参数，

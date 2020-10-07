@@ -91,12 +91,12 @@ public class AdaptiveClassCodeGenerator {
         if (!hasAdaptiveMethod()) {
             throw new IllegalStateException("No adaptive method exist on extension " + type.getName() + ", refuse to create the adaptive class!");
         }
-
+//生成包信息  import信息  方法.....
         StringBuilder code = new StringBuilder();
         code.append(generatePackageInfo());
         code.append(generateImports());
         code.append(generateClassDeclaration());
-
+//遍历接口的方法  生成代理方法
         Method[] methods = type.getMethods();
         for (Method method : methods) {
             code.append(generateMethod(method));
@@ -158,6 +158,7 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethod(Method method) {
         String methodReturnType = method.getReturnType().getCanonicalName();
         String methodName = method.getName();
+        //方法代理
         String methodContent = generateMethodContent(method);
         String methodArgs = generateMethodArguments(method);
         String methodThrows = generateMethodThrows(method);
@@ -198,14 +199,19 @@ public class AdaptiveClassCodeGenerator {
      * generate method content
      */
     private String generateMethodContent(Method method) {
+        //方法上存在adaptive才进行代理
         Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
         StringBuilder code = new StringBuilder(512);
         if (adaptiveAnnotation == null) {
             return generateUnsupported(method);
         } else {
+            //方法中url参数类型的下标
             int urlTypeIndex = getUrlTypeIndex(method);
 
             // found parameter in URL type
+            //寻找url 如果当前方法参数中有url类型的参数，那么url就是该参数
+            //如果当前方法中参数没有url，但是当前方法中有某个类型的get方法返回了url类型 ，
+            //那么久调用那个get方法
             if (urlTypeIndex != -1) {
                 // Null Point check
                 code.append(generateUrlNullCheck(urlTypeIndex));
@@ -213,9 +219,9 @@ public class AdaptiveClassCodeGenerator {
                 // did not find parameter in URL type
                 code.append(generateUrlAssignmentIndirectly(method));
             }
-
+//根据value找对应的扩展实现类
             String[] value = getMethodAdaptiveValue(adaptiveAnnotation);
-
+            //方法中有invocation类型的参数
             boolean hasInvocation = hasInvocationArgument(method);
 
             code.append(generateInvocationArgumentNullCheck(method));

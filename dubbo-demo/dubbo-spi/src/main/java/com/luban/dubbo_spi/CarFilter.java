@@ -16,8 +16,19 @@ import org.apache.dubbo.common.URL;
  */
 
 public class CarFilter implements  Car {
+//    public  User user;
+//
+//    public User getUser() {
+//        return user;
+//    }
+//
+//    public void setUser(User user) {
+//        this.user = user;
+//    }
+
     @Override
     public void test(URL url) {
         System.out.println("test");
+       // user.testUser(null);
     }
 }
