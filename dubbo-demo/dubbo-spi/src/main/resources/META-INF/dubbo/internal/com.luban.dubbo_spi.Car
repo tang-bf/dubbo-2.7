@@ -1,0 +1,3 @@
+car1=com.luban.dubbo_spi.CarFilter
+com.luban.dubbo_spi.CarWrapper
+com.luban.dubbo_spi.CarWrapper2

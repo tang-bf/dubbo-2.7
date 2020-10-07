@@ -1,0 +1,6 @@
+jetty=com.luban.dubbo_spi.jetty.JettyServer
+tomcat=com.luban.dubbo_spi.tomcat.TomcatServer
+tomcatInject=com.luban.dubbo_spi.inject.TomcatServerInject
+tomcatWrapper=com.luban.dubbo_spi.wrapper.TomcatServerWrapper
+tomcatWrapper2=com.luban.dubbo_spi.wrapper.TomcatServerWrapper2
+

@@ -161,7 +161,7 @@ public class ExtensionLoader<T> {
             throw new IllegalArgumentException("Extension type (" + type +
                     ") is not an extension, because it is NOT annotated with @" + SPI.class.getSimpleName() + "!");
         }
-
+        //每一个type 对应一个extensionlaoder
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
@@ -417,11 +417,18 @@ public class ExtensionLoader<T> {
         if (StringUtils.isEmpty(name)) {
             throw new IllegalArgumentException("Extension name == null");
         }
+        //默认实现类  即在接口加上@SPI（“dubbo”,"",""....）
+        /**
+         * @SPI("dubbo")
+         * public interface Protocol {
+         */
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        //spi上用了很多本地缓存
         final Holder<Object> holder = getOrCreateHolder(name);
         Object instance = holder.get();
+        //DCL双重检查
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
@@ -635,9 +642,10 @@ public class ExtensionLoader<T> {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            //依赖注入  判断是否有set方法 ；利用反射执行set方法
             injectExtension(instance);
 
-
+            //类似aop  配置文件中配置wrapper类 且wrapper类构造方法必须有当前实现类
             if (wrap) {
 
                 List<Class<?>> wrapperClassesList = new ArrayList<>();
@@ -646,10 +654,13 @@ public class ExtensionLoader<T> {
                     wrapperClassesList.sort(WrapperComparator.COMPARATOR);
                     Collections.reverse(wrapperClassesList);
                 }
-
+                //System.out.println("多个wrapper实现类看排序情况  ，run和debug执行结果不一致");
+               // System.out.println(wrapperClassesList);
+               // System.out.println(wrapperClassesList);
                 if (CollectionUtils.isNotEmpty(wrapperClassesList)) {
                     for (Class<?> wrapperClass : wrapperClassesList) {
                         Wrapper wrapper = wrapperClass.getAnnotation(Wrapper.class);
+                      //  System.out.println(wrapperClass.getName());
                         if (wrapper == null
                                 || (ArrayUtils.contains(wrapper.matches(), name) && !ArrayUtils.contains(wrapper.mismatches(), name))) {
                             instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
@@ -769,10 +780,11 @@ public class ExtensionLoader<T> {
      * synchronized in getExtensionClasses
      */
     private Map<String, Class<?>> loadExtensionClasses() {
+        //缓存默认实现类
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
-
+        //LoadingStrategy   四种目录  "META-INF/services/";
         for (LoadingStrategy strategy : strategies) {
             loadDirectory(extensionClasses, strategy.directory(), type.getName(), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
             loadDirectory(extensionClasses, strategy.directory(), type.getName().replace("org.apache", "com.alibaba"), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
@@ -845,6 +857,7 @@ public class ExtensionLoader<T> {
     private void loadResource(Map<String, Class<?>> extensionClasses, ClassLoader classLoader,
                               java.net.URL resourceURL, boolean overridden, String... excludedPackages) {
         try {
+            //读取文件解析
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -895,9 +908,12 @@ public class ExtensionLoader<T> {
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
+        //扩展自适应
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
         } else if (isWrapperClass(clazz)) {
+            // clazz.getConstructor(type);
+            //判断是否wraper类
             cacheWrapperClass(clazz);
         } else {
             clazz.getConstructor();
