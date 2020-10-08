@@ -32,6 +32,7 @@ public class Application {
     }
 
     @Configuration
+    //底层可看到 实现spring   ImportBeanDefinitionRegistrar spring import注解三种类型
     @EnableDubbo(scanBasePackages = "org.apache.dubbo.demo.provider")
     @PropertySource("classpath:/spring/dubbo-provider.properties")
     static class ProviderConfiguration {

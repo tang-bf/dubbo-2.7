@@ -10,7 +10,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-
+//为什么不用spring的service注解，dubbo自己要实现一个  spring的不能配置参数 ，dubbo的service注解已更改为dubboservice
+//spring启动的时候也是需要将dubbo标记的service注解生成为bean，还需要服务的注册,启动Tomcat，jetty等等
+/*怎么触发的呢
+解析配置  @enabledubboconfig 用来将注解中的properties 转化成对应的xxxConfig对象
+ @DubboComponentScan
+spring生成了那个bean后，是一个普通bean
+再生成一个servicebean 这个servicebean父类ServiceConfigBase 有个属性 ref ==> 普通bean
+servicebean 这个bean实现了ServiceBean 这个bean实现了以前的版本是实现了applicationlistener
+新版版中用了ApplicationEventPublisherAware 代替
+ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean,
+        ApplicationContextAware, BeanNameAware, ApplicationEventPublisherAware {
+spring启动完了发布一个事件 进行服务的导出注册
+ */
 @Service(timeout = 3000)
 public class TimeoutDemoService implements DemoService {
 

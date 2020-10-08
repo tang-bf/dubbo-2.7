@@ -175,7 +175,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // dispatch a ServiceConfigUnExportedEvent since 2.7.4
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
-
+//服务导出
     public synchronized void export() {
         if (!shouldExport()) {
             return;

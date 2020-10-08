@@ -41,8 +41,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@EnableDubboConfig
-@DubboComponentScan
+@EnableDubboConfig// 用来将注解中的properties 转化成对应的xxxConfig对象
+// dubbo.application 对应dubbo中 ApplicationConfig 父类是AbstractConfig 对应很多实现类  protocolconfig providerconfig .....
+@DubboComponentScan//扫描服务提供者  服务消费者
 public @interface EnableDubbo {
 
     /**
