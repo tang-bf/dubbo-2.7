@@ -45,7 +45,7 @@ public class DubboConfigConfigurationRegistrar implements ImportBeanDefinitionRe
 
         AnnotationAttributes attributes = AnnotationAttributes.fromMap(
                 importingClassMetadata.getAnnotationAttributes(EnableDubboConfig.class.getName()));
-
+        // EnableDubboConfig  multiple默认是true
         boolean multiple = attributes.getBoolean("multiple");
     //multiple 能多配置还是单配置  dubbo.protocols.p1.id=dubbo1 还是 dubbo.protocol.id=
         //class Single {  prefix = "dubbo.application", type = ApplicationConfig.class
@@ -59,10 +59,16 @@ public class DubboConfigConfigurationRegistrar implements ImportBeanDefinitionRe
         /*@Import(ConfigurationBeanBindingRegistrar.class) 实现了importbenadefinitionregister
            会根据single还是multiple注册单例还是多个，同时注册ConfigurationBeanBindingPostProcessor 是一个beanpostprocessor
            multiple  true false 的区别  名字的区别 根据multiple 判断是否从属性配置中获取bean的名字
-           如果为false 看有没有配置id属性，如果没有则自动生成一个beanname
+           如果为false 看有没有配置id属性，
+           如果没有则自动生成一个beanname
+           以demo-provider-annotation为例，解析到dubbo.application.name 时候判断没id则生成》》》》》
+           	id = generatedBeanName + GENERATED_BEAN_NAME_SEPARATOR + counter;
+           	如果是dubbo.protocols.p1.name=dubbo 那bean的名字就是取得p1
+            org.apache.dubbo.config.ApplicationConfig#0
                  Set<String> beanNames = multiple ? resolveMultipleBeanNames(configurationProperties) :
 //                singleton(resolveSingleBeanName(configurationProperties, configClass, registry));
-         */
+29f分支
+         *///先注册一个bean dubboConfigConfiguration.Single
         registerBeans(registry, DubboConfigConfiguration.Single.class);
 
         if (multiple) { // Since 2.6.6 https://github.com/apache/dubbo/issues/3193

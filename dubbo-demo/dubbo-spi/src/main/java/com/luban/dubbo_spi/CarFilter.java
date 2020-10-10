@@ -31,4 +31,9 @@ public class CarFilter implements  Car {
         System.out.println("test");
        // user.testUser(null);
     }
+
+    @Override
+    public void testAdaptive(URL url) {
+
+    }
 }

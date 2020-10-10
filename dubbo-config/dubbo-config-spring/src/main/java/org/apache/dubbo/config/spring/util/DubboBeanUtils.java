@@ -44,23 +44,23 @@ public interface DubboBeanUtils {
      * @see DubboBootstrapApplicationListener
      */
     static void registerCommonBeans(BeanDefinitionRegistry registry) {
-
+        //beanpostprocessor
         // Since 2.5.7 Register @Reference Annotation Bean Processor as an infrastructure Bean
         registerInfrastructureBean(registry, ReferenceAnnotationBeanPostProcessor.BEAN_NAME,
                 ReferenceAnnotationBeanPostProcessor.class);
-
+        //  同时实现了BeanDefinitionRegistryPostProcessor, BeanPostProcessor
         // Since 2.7.4 [Feature] https://github.com/apache/dubbo/issues/5093
         registerInfrastructureBean(registry, DubboConfigAliasPostProcessor.BEAN_NAME,
                 DubboConfigAliasPostProcessor.class);
-
+        //OneTimeExecutionApplicationContextEventListener implements ApplicationListener, ApplicationContextAware
         // Since 2.7.5 Register DubboLifecycleComponentApplicationListener as an infrastructure Bean
         registerInfrastructureBean(registry, DubboLifecycleComponentApplicationListener.BEAN_NAME,
                 DubboLifecycleComponentApplicationListener.class);
-
+        //DubboBootstrapApplicationListener  extends OneTimeExecutionApplicationContextEventListener
         // Since 2.7.4 Register DubboBootstrapApplicationListener as an infrastructure Bean
         registerInfrastructureBean(registry, DubboBootstrapApplicationListener.BEAN_NAME,
                 DubboBootstrapApplicationListener.class);
-
+        //beanpostprocessor
         // Since 2.7.6 Register DubboConfigDefaultPropertyValueBeanPostProcessor as an infrastructure Bean
         registerInfrastructureBean(registry, DubboConfigDefaultPropertyValueBeanPostProcessor.BEAN_NAME,
                 DubboConfigDefaultPropertyValueBeanPostProcessor.class);
