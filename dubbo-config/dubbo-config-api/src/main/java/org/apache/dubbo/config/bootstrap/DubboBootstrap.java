@@ -182,7 +182,27 @@ public class DubboBootstrap extends GenericEventListener {
         }
         return instance;
     }
+        /*
+        持有ConfigManager、Environment对象并且对其初始化，这两个对象都是与配置相关的；
+        更新配置中心配置对象ConfigCenterConfig的属性值；
+        加载元数据中心对象；
+        检查各个配置对象的属性值是否合法；
+        注册java的关闭钩子；
+        服务端服务的暴露。
 
+        ConfigManager存储了所有dubbo的配置对象：RegistryConfig、ConsumerConfig、ModuleConfig、ProtocolConfig、ProviderConfig、ApplicationConfig、MonitorConfig。
+类似于一个本地的配置中心，如果要查询配置信息，访问ConfigManager获取对应的配置对象即可，任何配置对象修改了，都要刷新ConfigManager，比如ApplicationConfig修改了属性值，便会调用refreshAll方法修改ConfigManager。
+这些配置对象都存储在该对象的属性configsCache中，该属性是一个HashMap对象，因为HashMap不是线程安全的，所以提供了属性lock（ReadWriteLock对象）对访问属性configsCache的操作加锁。
+ConfigManager提供了大量的setXXX和addXXX方法，这些方法最终都是调用addConfig方法，addConfig方法将配置对象添加到属性configsCache中。
+属性configsCache的类型是Map<String, Map<String, AbstractConfig>>，是一个两层Map结构，第一层的key是配置类名字的变体，比如调用addMetadataReports增加MetadataReportConfig对象，那么第一层的key是metadata-report，也就是将类名字的Config去掉，然后在类名字中大写字母前加“-”，最后将所有的大写字母变为小写字母。第二层的key是配置对象中的id属性的值，如果没有设置id值，默认使用类名字+“#default”作为key。
+在dubbo中，一般访问ConfigManager，是使用ApplicationModel.getConfigManager()通过SPI获取对象的。
+因为AbstractConfig的addIntoConfigManager方法有注解@PostConstruct，因此在AbstractConfig对象创建完毕后，spring会自动调用addIntoConfigManager方法，在该方法中将配置对象添加到ConfigManager中。通过addIntoConfigManager方法保证了所有的配置对象都会存储到ConfigManager中。
+DubboBootstrap也提供了大量的方法用于向ConfigManager中添加配置对象以及从ConfigManager中获取配置对象。
+
+        Environment也是存储配置信息，与ConfigManager不同的是，
+        Environment主要处理的与系统配置相关，比如Java系统配置，以及配置中心的配置。
+        获取Environment对象，是通过ApplicationModel.getEnvironment()得到。
+         */
     private DubboBootstrap() {
         configManager = ApplicationModel.getConfigManager();
         environment = ApplicationModel.getEnvironment();
@@ -499,14 +519,19 @@ public class DubboBootstrap extends GenericEventListener {
 
     /**
      * Initialize
+     * 在ReferenceConfig的init方法（客户端启动）中执行；
+     * 在服务端启动的时候，当spring发布了ContextRefreshedEvent事件后，
+     * 会触发监听器DubboBootstrapApplicationListener，该监听器也会调用initialize方法。
      */
     public void initialize() {
         if (!initialized.compareAndSet(false, true)) {
-            return;
+            return;//initialize方法只能初始化一次
         }
-
+       //初始化FrameworkExt实现类，Environment是FrameworkExt实现类，这里会调用Environment的initialize方法
         ApplicationModel.initFrameworkExts();
-
+        // 从配置中心获取配置  包括应用和全局
+        // 把获取到的配置放入到environment extensionconfigurationmap appExternalConfigurationMap
+        //并刷新所有config属性
         startConfigCenter();
 
         loadRemoteConfigs();
@@ -812,8 +837,35 @@ public class DubboBootstrap extends GenericEventListener {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Start the bootstrap
+    /**服务导出 利用spring发布事件 最终调用的还是serviceconfig 的export方法
+     * 服务导出： 将服务注册到注册中心去 ;
+     * 服务url demoservice接口表示一个服务，表示的是服务的定义
+     * demoserviceimpl 服务的具体实现，
+     * demoservice+group+version 表示一个服务  增加了服务分组和版本的概念
+     * (dubbo 服务治理根据router 实现灰度发布一般是版本号加路由功能 条件路由标签路由)
+     * http://182.119.145.43:80/com.tbh.DemoService?timeout=3000&version=1.0.0&application=dubbo-demo-provider
+     * 表示一个服务，此时拥有参数  ；
+     * dubbo导出要做的就是确定服务的参数，确定服务支持的协议，构造服务最终的url，将url注册到注册中心，
+     * 1.dubbo中除了在@service中服务配置参数，也可在dubbo.properties 对应类PropertiesConfiguration
+     * 2.配置中心  分布式配置中心dubbo-admin 去配置，可以按应用也可以按全局，分别对应appexternalconfiguration ,externalconfiguration
+     * 3.系统环境变量  -D 对应systemconfiguration
+     * 4.service注解上对应的 abstractconfig
+     * 优先级 systemconfiguration>appextenal>extenal>abstract>properties
+     * 根据不同的服务协议启动不同的server接收处理请求，dubbo支持动态更改配置服务参数，服务导出还需要绑定一个监听器
+     * 监听服务的参数是否有修改，如果发现有更改，需要从新进行导出
+     * 启动netty tomcat server;
+     * spring finishrefersh中
+     * publishEvent(new ContextRefreshedEvent(this));
+     .multicastEvent(applicationEvent, eventType)
+     onetimeexcutionapplicationcontexteventlistener
+     dubbobootstrapapplicationlistener
+     dubboBootstrap .start
+
+     exportservice
+
+     servicebean(servicebean  extends ServiceConfig<T> extends ServiceConfigBase)
+     ServiceConfig 。export()
+     * Start the bootstrap   spring容器加载初始化后  finishrefersh
      */
     public DubboBootstrap start() {
         if (started.compareAndSet(false, true)) {
@@ -1013,7 +1065,7 @@ public class DubboBootstrap extends GenericEventListener {
 
     private void exportServices() {
         configManager.getServices().forEach(sc -> {
-            // TODO, compatible with ServiceConfig.export()
+            // TODO, compatible with ServiceConfig.export()  ServiceConfigBase
             ServiceConfig serviceConfig = (ServiceConfig) sc;
             serviceConfig.setBootstrap(this);
 
@@ -1025,7 +1077,7 @@ public class DubboBootstrap extends GenericEventListener {
                 });
                 asyncExportingFutures.add(future);
             } else {
-                sc.export();
+                sc.export();// servicebean  extends ServiceConfig<T> extends ServiceConfigBase
                 exportedServices.add(sc);
             }
         });

@@ -177,15 +177,15 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 //服务导出
     public synchronized void export() {
-        if (!shouldExport()) {
+        if (!shouldExport()) {//isexported()
             return;
         }
-
+        //  DubboBootstrap 实例只有一个  通过静态方法getinstance获取
         if (bootstrap == null) {
             bootstrap = DubboBootstrap.getInstance();
             bootstrap.initialize();
         }
-
+        //生成的servicebean 的一些属性 appconfig protocolconfig egistry...生成的时候拿到注解上的值设置的，但是优先级可能不是最高的，所以有这一步
         checkAndUpdateSubConfigs();
 
         //init serviceMetadata
@@ -211,16 +211,17 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     private void checkAndUpdateSubConfigs() {
-        // Use default configs defined explicitly with global scope
+        // Use default configs defined explicitly with global scope 如果serviceconfig某些属性是空的，就从providerconfig moduleconfig applicationconfig 中获取
         completeCompoundConfigs();
-        checkDefault();
-        checkProtocol();
+        checkDefault();//没有providerconfig就创建一个
+        checkProtocol();//如果没有单独的protocols 就从provider中获取协议添加到serviceconfig中
+        //如果赔了一个协议，就会加到serviceconfig中
         // init some null configuration.
         List<ConfigInitializer> configInitializers = ExtensionLoader.getExtensionLoader(ConfigInitializer.class)
                 .getActivateExtension(URL.valueOf("configInitializer://"), (String[]) null);
         configInitializers.forEach(e -> e.initServiceConfig(this));
 
-        // if protocol is not injvm checkRegistry
+        // if protocol is not injvm checkRegistry  如果protocol不止有injm协议  表示服务不是只在本地调用，那么需要用注册中心
         if (!isOnlyInJvm()) {
             checkRegistry();
         }
@@ -229,7 +230,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         if (StringUtils.isEmpty(interfaceName)) {
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         }
-
+        //是否是泛化服务
         if (ref instanceof GenericService) {
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
@@ -275,7 +276,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
         }
         checkStubAndLocal(interfaceClass);
-        ConfigValidationUtils.checkMock(interfaceClass, this);
+        ConfigValidationUtils.checkMock(interfaceClass, this);//检查mock
         ConfigValidationUtils.validateServiceConfig(this);
         postProcessConfig();
     }

@@ -56,7 +56,7 @@ public class DubboBootstrapApplicationListener extends OneTimeExecutionApplicati
     }
 
     private void onContextRefreshedEvent(ContextRefreshedEvent event) {
-        dubboBootstrap.start();
+        dubboBootstrap.start();//DubboBootstrap start方法开始exportservice
     }
 
     private void onContextClosedEvent(ContextClosedEvent event) {
