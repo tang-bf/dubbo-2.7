@@ -117,11 +117,11 @@ public class Environment extends LifecycleAdapter implements FrameworkExt {
         Configuration configuration = new ConfigConfigurationAdapter(config);
         if (this.isConfigCenterFirst()) {
             // The sequence would be: SystemConfiguration -> AppExternalConfiguration -> ExternalConfiguration -> AbstractConfig -> PropertiesConfiguration
-            // Config center has the highest priority
+            // Config center has the highest priority  LinkedList 有顺序的
             prefixedConfiguration.addConfiguration(systemConfiguration);
             prefixedConfiguration.addConfiguration(environmentConfiguration);
             prefixedConfiguration.addConfiguration(appExternalConfiguration);
-            prefixedConfiguration.addConfiguration(externalConfiguration);
+            prefixedConfiguration.addConfiguration(externalConfiguration);//配置中心 gloab
             prefixedConfiguration.addConfiguration(configuration);
             prefixedConfiguration.addConfiguration(propertiesConfiguration);
         } else {

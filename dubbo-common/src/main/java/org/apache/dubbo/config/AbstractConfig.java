@@ -454,9 +454,9 @@ public abstract class AbstractConfig implements Serializable {
         this.prefix = prefix;
     }
 
-    public void refresh() {
+    public void refresh() { //将当前serviceconfig上的set方法对应的属性更新为优先级最高的值
         Environment env = ApplicationModel.getEnvironment();
-        try {
+        try {// condiglist 6个  systemconfiguration environmentconfiguration inmemoryconfiguration  inmemoryconfiguration configconfiguration propertiesconfiguration
             CompositeConfiguration compositeConfiguration = env.getPrefixedConfiguration(this);
             // loop methods, get override value and set the new value back to method
             Method[] methods = getClass().getMethods();

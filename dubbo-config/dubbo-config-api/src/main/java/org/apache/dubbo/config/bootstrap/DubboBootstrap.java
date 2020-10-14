@@ -527,7 +527,7 @@ DubboBootstrap也提供了大量的方法用于向ConfigManager中添加配置�
         if (!initialized.compareAndSet(false, true)) {
             return;//initialize方法只能初始化一次
         }
-       //初始化FrameworkExt实现类，Environment是FrameworkExt实现类，这里会调用Environment的initialize方法
+       //初始化FrameworkExt实现类，Environment是FrameworkExt实现类，这里会调用Environment的initialize方法  三个 configmanager environment  servicerepositiry
         ApplicationModel.initFrameworkExts();
         // 从配置中心获取配置  包括应用和全局
         // 把获取到的配置放入到environment extensionconfigurationmap appExternalConfigurationMap
@@ -637,7 +637,7 @@ DubboBootstrap也提供了大量的方法用于向ConfigManager中添加配置�
                 compositeDynamicConfiguration.addConfiguration(prepareEnvironment(configCenter));
             }
             environment.setDynamicConfiguration(compositeDynamicConfiguration);
-        }
+        }//配置中心获取数据后 刷新所有的xxconfig中的属性  ApplicationConfig::refresh  MonitorConfig::refresh .....
         configManager.refreshAll();
     }
 
@@ -1007,14 +1007,14 @@ DubboBootstrap也提供了大量的方法用于向ConfigManager中添加配置�
         if (configCenter.isValid()) {
             if (!configCenter.checkOrUpdateInited()) {
                 return null;
-            }
+            } //动态配置中心  管理台配置
             DynamicConfiguration dynamicConfiguration = getDynamicConfiguration(configCenter.toUrl());
             String configContent = dynamicConfiguration.getProperties(configCenter.getConfigFile(), configCenter.getGroup());
-
+            //configContent 如果是zk /dubbo/config/dubbo/dubbo-demo-provider-application/dubbo.properties节点内容
             String appGroup = getApplication().getName();
             String appConfigContent = null;
-            if (isNotEmpty(appGroup)) {
-                appConfigContent = dynamicConfiguration.getProperties
+            if (isNotEmpty(appGroup)) {//appGroup  /dubbo/config/dubbo-demo-consumer-applications.properties 节点内容
+                appConfigContent = dynamicConfiguration.getProperties  //存在bug
                         (isNotEmpty(configCenter.getAppConfigFile()) ? configCenter.getAppConfigFile() : configCenter.getConfigFile(),
                                 appGroup
                         );

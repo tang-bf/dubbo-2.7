@@ -220,11 +220,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         List<ConfigInitializer> configInitializers = ExtensionLoader.getExtensionLoader(ConfigInitializer.class)
                 .getActivateExtension(URL.valueOf("configInitializer://"), (String[]) null);
         configInitializers.forEach(e -> e.initServiceConfig(this));
-
+        //本地调用使用了 injvm 协议，是一个伪协议，它不开启端口，不发起远程调用，只在 JVM 内直接关联，但执行 Dubbo 的 Filter 链
         // if protocol is not injvm checkRegistry  如果protocol不止有injm协议  表示服务不是只在本地调用，那么需要用注册中心
         if (!isOnlyInJvm()) {
             checkRegistry();
-        }
+        }//刷新serviceconfig
         this.refresh();
 
         if (StringUtils.isEmpty(interfaceName)) {
