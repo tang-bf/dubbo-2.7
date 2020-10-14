@@ -851,6 +851,13 @@ DubboBootstrap也提供了大量的方法用于向ConfigManager中添加配置�
      * 3.系统环境变量  -D 对应systemconfiguration
      * 4.service注解上对应的 abstractconfig
      * 优先级 systemconfiguration>appextenal>extenal>abstract>properties
+     * private final PropertiesConfiguration propertiesConfiguration;
+     *     private final SystemConfiguration systemConfiguration;
+     *     private final EnvironmentConfiguration environmentConfiguration;
+     *     private final InmemoryConfiguration externalConfiguration;
+     *     private final InmemoryConfiguration appExternalConfiguration;
+     *
+     *     private CompositeConfiguration globalConfiguration;
      * 根据不同的服务协议启动不同的server接收处理请求，dubbo支持动态更改配置服务参数，服务导出还需要绑定一个监听器
      * 监听服务的参数是否有修改，如果发现有更改，需要从新进行导出
      * 启动netty tomcat server;
