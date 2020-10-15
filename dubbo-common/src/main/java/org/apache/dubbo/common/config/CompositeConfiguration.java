@@ -77,6 +77,7 @@ public class CompositeConfiguration implements Configuration {
     public Object getInternalProperty(String key) {
         Configuration firstMatchingConfiguration = null;
         for (Configuration config : configList) {
+            //从configList 就是 那些addconfiguration几个
             try {
                 if (config.containsKey(key)) {
                     firstMatchingConfiguration = config;
@@ -85,7 +86,7 @@ public class CompositeConfiguration implements Configuration {
             } catch (Exception e) {
                 logger.error("Error when trying to get value for key " + key + " from " + config + ", will continue to try the next one.");
             }
-        }
+        }//有值就return  优先级实现
         if (firstMatchingConfiguration != null) {
             return firstMatchingConfiguration.getProperty(key);
         } else {

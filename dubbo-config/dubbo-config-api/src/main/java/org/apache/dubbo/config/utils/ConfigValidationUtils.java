@@ -174,18 +174,23 @@ public class ConfigValidationUtils {
         if (CollectionUtils.isNotEmpty(registries)) {
             for (RegistryConfig config : registries) {
                 String address = config.getAddress();
+                //注册的中心没有配置地址  0.0.0.0
                 if (StringUtils.isEmpty(address)) {
                     address = ANYHOST_VALUE;
                 }
+                //注册中心的地址不是  N/A (n a 直连)
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
                     Map<String, String> map = new HashMap<String, String>();
                     AbstractConfig.appendParameters(map, application);
                     AbstractConfig.appendParameters(map, config);
+                    //path 值固定为RegistryService.class.getName()  现在是加载注册中心
                     map.put(PATH_KEY, RegistryService.class.getName());
+                    //dubbo的版本信息 pid放入map
                     AbstractInterfaceConfig.appendRuntimeParameters(map);
                     if (!map.containsKey(PROTOCOL_KEY)) {
-                        map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
+                        map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);//默认协议dubbo
                     }
+                    //构造注册中心  url  地址+参数
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
@@ -194,6 +199,12 @@ public class ConfigValidationUtils {
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))
                                 .build();
+                        //此时 url= registry:127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo
+                        // -provider&dubbo=2.0.0&pid=269936&registry=zookeeper://127.0.0.1:2181....
+                        //使用registry 协议调用RegistryService服务 参数为application=dubbo-demo
+                        //                        // -provider&dubbo=2.0.0&pid=269936&registry=zookeeper://127.0.0.1:2181...
+                        //服务方消费方 服务方获取register的值如果为false 表示服务不注册到注册中心
+                        //消费方获取subscribe的值  如果为false 引入的服务不订阅注册中心的数据
                         if ((provider && url.getParameter(REGISTER_KEY, true))
                                 || (!provider && url.getParameter(SUBSCRIBE_KEY, true))) {
                             registryList.add(url);
@@ -269,6 +280,7 @@ public class ConfigValidationUtils {
             normalizedMock = normalizedMock.substring(RETURN_PREFIX.length()).trim();
             try {
                 //Check whether the mock value is legal, if it is illegal, throw exception
+                //解析mock
                 MockInvoker.parseMockValue(normalizedMock);
             } catch (Exception e) {
                 throw new IllegalStateException("Illegal mock return in <dubbo:service/reference ... " +

@@ -472,7 +472,7 @@ public abstract class AbstractConfig implements Serializable {
                         logger.info("Failed to override the property " + method.getName() + " in " +
                                 this.getClass().getSimpleName() +
                                 ", please make sure every property has getter/setter method provided.");
-                    }
+                    }//是不是setParameters方法
                 } else if (isParametersSetter(method)) {
                     String value = StringUtils.trim(compositeConfiguration.getString(extractPropertyName(getClass(), method)));
                     if (StringUtils.isNotEmpty(value)) {
