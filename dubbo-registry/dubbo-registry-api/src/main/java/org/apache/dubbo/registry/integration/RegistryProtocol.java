@@ -188,29 +188,46 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        /**originInvoker  = DelegateProviderMetaDataInvoker
+         * 将registyr://xxxx?xx=xx$registry=zk 转为zk://xxx?xx=xx
+         */
         URL registryUrl = getRegistryUrl(originInvoker);
-        // url to export locally
+        // url to export locally  dubbo://192.168.145.43:20880/org.apache.demoservice?timeout=xxx....
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
+        //  老版本的动态配置监听url 表示要监听的服务及url
+        //在服务提供者url基础上生成一个overrideSubscribeUrl 协议为provider://,增加参数category=configurator
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
+        //一个overrideSubscribeUrl对应一个overrideSubscribeListener   监听变化并作出处理
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
-
+        //重写providerurl
+        /**调用providerConfigurationListener 应用级别监听器  serviceConfigurationListeners 服务级别监听器
+         *新版本监听的路径是
+         * 服务 /dubbo/config/dubbo/org.apche.demoservice.configurations节点的内容
+         * 应用 /dubbo/config/dubbo/demo-provider-application.configurations
+         *2.7之前监听的是节点的名字  2.7后监听的是节点的内容变化
+         * 是基于最原始的url进行重写 最新版本是基于currenturl
+         */
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        // 导出
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
-        // url to registry
+        // url to registry 注册中心
         final Registry registry = getRegistry(originInvoker);
         final URL registeredProviderUrl = getUrlToRegistry(providerUrl, registryUrl);
 
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            //真正去注册  failbackregistry  >>>>zkregistry.doRegister
+            // zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
+            //创建失败的话会记录到map中，后续有一个定时器去重试
             register(registryUrl, registeredProviderUrl);
         }
 
@@ -222,6 +239,9 @@ public class RegistryProtocol implements Protocol {
         exporter.setSubscribeUrl(overrideSubscribeUrl);
 
         // Deprecated! Subscribe to override rules in 2.6.x or before.
+        /**
+         *
+         */
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
 
         notifyExport(exporter);
@@ -252,6 +272,7 @@ public class RegistryProtocol implements Protocol {
 
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
+            //实际执行dubboprotocol httpprotocol 去export ，dubbprortocol 去启动nettyserver
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -652,7 +673,7 @@ public class RegistryProtocol implements Protocol {
             }
             //The current, may have been merged many times
             URL currentUrl = exporter.getInvoker().getUrl();
-            //Merged with this configuration
+            //Merged with this configuration  老版本是基于originalurl
             URL newUrl = getConfigedInvokerUrl(configurators, currentUrl);
             newUrl = getConfigedInvokerUrl(providerConfigurationListener.getConfigurators(), newUrl);
             newUrl = getConfigedInvokerUrl(serviceConfigurationListeners.get(originUrl.getServiceKey())

@@ -255,7 +255,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 logger.error("Failed to register " + url + ", waiting for retry, cause: " + t.getMessage(), t);
             }
 
-            // Record a failed registration request to a failed list, retry regularly
+            // Record a failed registration request to a failed list, retry regularly j加到currenthashmap中
+            //通过定时器重试
             addFailedRegistered(url);
         }
     }

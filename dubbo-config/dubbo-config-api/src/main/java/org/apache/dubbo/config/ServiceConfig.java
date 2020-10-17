@@ -529,7 +529,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
                         //使用特定协议导出服务 registryprotocol 导出成功后是一个exporter
                         //先用registryprotocol注册服务 注册完后用dubboprotocol进行导出
-
+                        //怎么找到registryprotocol dubboprocol
+                        // spi机制会进行ProtocolFilterWrapper
+                        //ProtocolListenerWrapper 包装  执行其exort方法
                         Exporter<?> exporter = PROTOCOL.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
