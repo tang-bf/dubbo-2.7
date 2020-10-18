@@ -90,6 +90,10 @@ import static org.apache.dubbo.rpc.cluster.Constants.ROUTER_KEY;
 
 /**
  * RegistryDirectory
+ * 动态目录 NotifyListener也是一个监听器
+ * 服务变更时接受通知，就是消费端缓存的服务信息
+ * 消费方要调用远程服务，会向注册中心订阅这个服务的所有的服务提供方，
+ * 订阅的时候会调用notify方法，进行invoker实例的重新生成，也就是服务的重新引用。在服务提供方有变动时，也会调用notify方法
  */
 public class RegistryDirectory<T> extends AbstractDirectory<T> implements NotifyListener {
 

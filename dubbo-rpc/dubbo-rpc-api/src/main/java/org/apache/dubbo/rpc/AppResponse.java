@@ -68,6 +68,12 @@ public class AppResponse implements Result {
 
     @Override
     public Object recreate() throws Throwable {
+        //appresponse   如果服务端抛了一个自定义异常  消费端没有引入这个，会找不到
+        //exceptionfileter 对于自定义异常包装成了runtimeexception
+        /**
+         * dubbo的service端想抛出自定义异常，只能通过在service端的接口方法上声明所要抛出的异常，
+         * 或者将异常类与接口同包，再或者是接口的实现类再实现dubbo的GenericService接口。
+         */
         if (exception != null) {
             // fix issue#619
             try {

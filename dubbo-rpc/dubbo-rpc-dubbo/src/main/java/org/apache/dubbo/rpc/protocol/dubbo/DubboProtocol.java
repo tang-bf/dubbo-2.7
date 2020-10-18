@@ -333,6 +333,9 @@ public class DubboProtocol extends AbstractProtocol {
                 .addParameterIfAbsent(CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
                 // enable heartbeat by default
                 .addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT))
+                /**
+                 * codec 实现编码
+                 */
                 .addParameter(CODEC_KEY, DubboCodec.NAME)
                 .build();
         String str = url.getParameter(SERVER_KEY, DEFAULT_REMOTING_SERVER);
@@ -398,8 +401,20 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public <T> Invoker<T> protocolBindingRefer(Class<T> serviceType, URL url) throws RpcException {
+        //优化序列化
         optimizeSerialization(url);
-
+        /**
+         * 一个dubboinvoker有多个clients     为了提高效率，一个client和server之间有一个socket
+         * dubboinvoker 发送请求数据时会轮训clients去发送数据
+         * 为什么采用异步单一长连接：
+         * 因为服务的现状大都是服务提供者少，通常只有几台机器，而服务的消费者多，可能整个网站都在访问该服务，
+         * 比如 Morgan 的提供者只有 6 台提供者，却有上百台消费者，每天有 1.5 亿次调用，
+         * 如果采用常规的 hessian 服务，服务提供者很容易就被压跨，
+         * 通过单一连接，保证单一消费者不会压死提供者，长连接，减少连接握手验证等，
+         * 并使用异步 IO，复用线程池，防止 C10K 问题。
+         * c10k 问题通过io多路复用解决 epoll(epoll惊群问题，zk实现分布式锁设计不当也有惊群问题，线程池也会有)
+         * c10m问题  协程（coroutine） 携程
+         */
         // create rpc invoker.
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
@@ -411,7 +426,18 @@ public class DubboProtocol extends AbstractProtocol {
         // whether to share connection
 
         boolean useShareConnect = false;
-
+        /**
+         * connections 表示几个socket连接
+         * dubboinvoker 可能并发的去调用某个服务
+         * 单独一次调用就需要一个单独的client去发送请求
+         * 如果clients很多就会轮询使用
+         * 见代码
+         *  if (clients.length == 1) {
+         *             currentClient = clients[0];
+         *         } else {
+         *             currentClient = clients[index.getAndIncrement() % clients.length];
+         *         }
+         */
         int connections = url.getParameter(CONNECTIONS_KEY, 0);
         List<ReferenceCountExchangeClient> shareClients = null;
         // if not configured, connection is shared, otherwise, one connection for one service
@@ -570,10 +596,12 @@ public class DubboProtocol extends AbstractProtocol {
     private ExchangeClient initClient(URL url) {
 
         // client type setting.
+        //默认是netty
         String str = url.getParameter(CLIENT_KEY, url.getParameter(SERVER_KEY, DEFAULT_REMOTING_CLIENT));
-
+        //编码方式
         url = url.addParameter(CODEC_KEY, DubboCodec.NAME);
         // enable heartbeat by default
+        //exchangeclient  headerexchangeclient 60s一个心跳
         url = url.addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT));
 
         // BIO is not allowed since it has severe performance issue.

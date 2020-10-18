@@ -57,13 +57,14 @@ public class ExceptionFilter implements Filter, Filter.Listener {
         if (appResponse.hasException() && GenericService.class != invoker.getInterface()) {
             try {
                 Throwable exception = appResponse.getException();
-
+                // 如果是checked异常，直接抛出
                 // directly throw if it's checked exception
                 if (!(exception instanceof RuntimeException) && (exception instanceof Exception)) {
                     return;
                 }
                 // directly throw if the exception appears in the signature
                 try {
+                    // 在方法签名上有声明，直接抛出
                     Method method = invoker.getInterface().getMethod(invocation.getMethodName(), invocation.getParameterTypes());
                     Class<?>[] exceptionClassses = method.getExceptionTypes();
                     for (Class<?> exceptionClass : exceptionClassses) {
@@ -74,7 +75,7 @@ public class ExceptionFilter implements Filter, Filter.Listener {
                 } catch (NoSuchMethodException e) {
                     return;
                 }
-
+                // 未在方法签名上定义的异常，在服务器端打印ERROR日志
                 // for the exception not found in method's signature, print ERROR message in server's log.
                 logger.error("Got unchecked and undeclared exception which called by " + RpcContext.getContext().getRemoteHost() + ". service: " + invoker.getInterface().getName() + ", method: " + invocation.getMethodName() + ", exception: " + exception.getClass().getName() + ": " + exception.getMessage(), exception);
 
@@ -85,15 +86,17 @@ public class ExceptionFilter implements Filter, Filter.Listener {
                     return;
                 }
                 // directly throw if it's JDK exception
+                // 异常类和接口类在同一jar包里，直接抛出
                 String className = exception.getClass().getName();
                 if (className.startsWith("java.") || className.startsWith("javax.")) {
                     return;
                 }
+                // 是Dubbo本身的异常，直接抛出
                 // directly throw if it's dubbo exception
                 if (exception instanceof RpcException) {
                     return;
                 }
-
+                // 否则，包装成RuntimeException抛给客户端
                 // otherwise, wrap with RuntimeException and throw back to the client
                 appResponse.setException(new RuntimeException(StringUtils.toString(exception)));
             } catch (Throwable e) {

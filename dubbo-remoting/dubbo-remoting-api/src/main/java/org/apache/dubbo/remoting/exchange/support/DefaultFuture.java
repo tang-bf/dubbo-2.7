@@ -76,6 +76,15 @@ public class DefaultFuture extends CompletableFuture<Object> {
         this.executor = executor;
     }
 
+    /**
+     * 每发送一次请求，会创建一个Request，默认会带有一个递增的id，并且再创建一个DefaultFuture，并保存request和channel的信息
+     * DefaultFuture主要是用来保存当次请求对应的Request信息和Channel信息
+     * Dubbo在请求的时候，会赋予当前请求一个id，将这个id放到请求中发送出去，
+     * 当收到返回结果的时候，也会带上请求的id，然后本地获取DefaultFuture，便可知道是哪次请求的了
+     *
+     * @param request
+     * @param timeout
+     */
     private DefaultFuture(Channel channel, Request request, int timeout) {
         this.channel = channel;
         this.request = request;

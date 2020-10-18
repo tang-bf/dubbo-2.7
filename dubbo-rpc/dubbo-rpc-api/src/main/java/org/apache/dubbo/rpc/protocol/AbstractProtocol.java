@@ -101,6 +101,10 @@ public abstract class AbstractProtocol implements Protocol {
 
     @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        /**
+         * 异步转同步invoker type是接口 url是服务地址
+         * dubboinvoker是异步的 asynctosyncinvoker会封装成同步的
+         */
         return new AsyncToSyncInvoker<>(protocolBindingRefer(type, url));
     }
 

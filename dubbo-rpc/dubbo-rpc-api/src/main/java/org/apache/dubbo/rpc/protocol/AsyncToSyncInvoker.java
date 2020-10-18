@@ -49,14 +49,25 @@ public class AsyncToSyncInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
+        /**服务接口代理对象》》》mockclusterinvoker>>failoverclusterinvoker>>>refistrydirectory
+         * >>>routerchain>>>>loadbalance>>>invokerwrapper
+         * >>>callbackregistrationinvoker >>consumercontextfileter>>>futurefileter>>monitorfileter
+         * >>>listenerinvokerwrapper>>AsyncToSyncInvoker >>>abstractinvoker >>>dubboinvoker
+         * >>>referencecountexchangeclient>>headerexchangeclient>headerexchangechannel>>abstractpeer
+         * >>.abstractclient>>>nettychannel>>>nioscoetchannel>>>
+         *
+         */
+        //
+        //异步转同步
         Result asyncResult = invoker.invoke(invocation);
 
-        try {
+        try {//如果invocation指定是同步的，则阻塞等待结果
             if (InvokeMode.SYNC == ((RpcInvocation) invocation).getInvokeMode()) {
                 /**
                  * NOTICE!
                  * must call {@link java.util.concurrent.CompletableFuture#get(long, TimeUnit)} because
                  * {@link java.util.concurrent.CompletableFuture#get()} was proved to have serious performance drop.
+                 *
                  */
                 asyncResult.get(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
             }
