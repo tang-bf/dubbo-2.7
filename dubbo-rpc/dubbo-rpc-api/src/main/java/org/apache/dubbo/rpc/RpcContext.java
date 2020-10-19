@@ -53,13 +53,55 @@ import static org.apache.dubbo.rpc.Constants.RETURN_KEY;
 public class RpcContext {
 
     /**
+     *
      * use internal thread local to improve performance
      */
-    // FIXME REQUEST_CONTEXT
+    // FIXME REQUEST_CONTEXT  老版本用的是threadlocal
+    // InternalThreadLocal 来源基于netty  可看到https://github.com/apache/dubbo/pull/1745·提交中有netty之父  还有apache公司的一个对话
+    //借助于netty中的fastthreadlocal
     private static final InternalThreadLocal<RpcContext> LOCAL = new InternalThreadLocal<RpcContext>() {
         @Override
         protected RpcContext initialValue() {
             return new RpcContext();
+            /**
+             * 有一个和业务没有一毛钱关系的参数，比如 traceId ，纯粹是为了做日志追踪用。
+             * 一个和业务无关的参数一路透传干啥玩意？
+             * 通常我们的做法是放在 ThreadLocal 里面，作为一个全局参数，在当前线程中的任何一个地方都可以直接读取。
+             * 当然，如果你有修改需求也是可以的，视需求而定。
+             * 绝大部分的情况下，ThreadLocal 是适用于读多写少的场景中。
+             * (1) spring源码中  分析@bean 的时候，会把当前方法和调用方法比较是否一样，调用方方就是存到threadlocal上面
+             * (2)spring事物基于aop实现，@Transactional 注解如果想要生效，那么其调用方，需要是被 Spring 动态代理后的类。
+             * 同一个类里面，使用 this 调用被 @Transactional 注解修饰的方法时，是不会生效的。
+             * 因为this不是代理对象，可有三种解决方案，
+             * 1.expose-proxy="true" 通过  AopContext.currentProxy() 调用
+             * 2.java配置类上添加注解@EnableAspectJAutoProxy(exposeProxy = true)方式暴漏代理对象，
+             * 然后在service中通过代理对象AopContext.currentProxy()去调用方法
+             * 3.ervice中自动装配service自身，然后同过装配对象调用
+             * aopcontext 里面维护了一个threadlocal
+             * (3)mybatis 的分页插件，PageHelper。
+             * pagehelper.startpage(1,10);
+             * 紧跟着的第一个的select方法会被分页
+             * list<user> list=usermapper.selectif(1);
+             * pagehelper方法使用了静态的threadlocal参数，分页参数和线程是绑定的
+             * 只要你可以保证在 PageHelper 方法调用后紧跟 MyBatis 查询方法，这就是安全的。
+             * 因为 PageHelper 在 finally 代码段中自动清除了 ThreadLocal 存储的对象。
+             * 所以就算代码在进入 Executor 前发生异常，导致线程不可用的情况，比如常见的接口方法名称和 XML 中的不匹配，
+             * 导致找不到 MappedStatement ，由于 finally 的自动清除，也不会导致 ThreadLocal 参数被错误的使用。
+             *
+             */
+            //jdk原生ThreadLocal
+        //  每个线程thread都持有一个 ThreadLocal.ThreadLocalMap  threadlocals变量(还有一个inheritableThreadLocals 继承threadlocal)
+            //ThreadLocalMap 有一个entry 基于WeakReference 弱引用
+            /*threadlocal set方法时，threadlocal本身作为key  put进去
+             默认为空，只有第一次set或者get时候才会创建，不使用本地变量的时候需要调用remove方法
+             THreadLocalMap中的Entry的key使用的是ThreadLocal对象的弱引用，
+             在没有其他地方对ThreadLoca依赖，ThreadLocalMap中的ThreadLocal对象就会被回收掉，
+             但是对应的不会被回收，这个时候Map中就可能存在key为null但是value不为null的项，
+             这需要实际的时候使用完毕及时调用remove方法避免内存泄漏。
+             同一个ThreadLocal变量在父线程中被设置值后，在子线程中是获取不到的。
+             （threadLocals中为当前调用线程对应的本地变量，所以二者自然是不能共享的）
+             InheritableThreadLocal类则可以做到这个功能
+             */
         }
     };
 

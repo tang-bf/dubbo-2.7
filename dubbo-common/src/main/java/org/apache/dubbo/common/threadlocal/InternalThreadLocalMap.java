@@ -90,11 +90,13 @@ public final class InternalThreadLocalMap {
      */
     public boolean setIndexedVariable(int index, Object value) {
         Object[] lookup = indexedVariables;
+        //数组容量还够，能放进去，那么可以直接设置
         if (index < lookup.length) {
             Object oldValue = lookup[index];
             lookup[index] = value;
             return oldValue == UNSET;
         } else {
+            //扩容
             expandIndexedVariableTableAndSet(index, value);
             return true;
         }
@@ -131,16 +133,48 @@ public final class InternalThreadLocalMap {
     }
 
     private static InternalThreadLocalMap fastGet(InternalThread thread) {
+        //InternalThreadLocalMap 在 InternalThread 里面是一个变量维护的，可以直接通过 InternalThread.threadLocalMap() 获得：
         InternalThreadLocalMap threadLocalMap = thread.threadLocalMap();
         if (threadLocalMap == null) {
             thread.setThreadLocalMap(threadLocalMap = new InternalThreadLocalMap());
         }
         return threadLocalMap;
     }
-
+    //原生 ThreadLocal 的 get 方法
     private static InternalThreadLocalMap slowGet() {
         ThreadLocal<InternalThreadLocalMap> slowThreadLocalMap = InternalThreadLocalMap.slowThreadLocalMap;
         InternalThreadLocalMap ret = slowThreadLocalMap.get();
+        /** 对应调用到ThreadLocalMap.Entry e = map.getEntry(this);
+         *  private Entry getEntry(ThreadLocal<?> key) {
+         *     计算 hash 值，然后拿着 hash 值去数组里面取数据。如果取出来的数据不是我们想要的数据，则到getEntryAfterMiss
+         *             int i = key.threadLocalHashCode & (table.length - 1);
+         *             Entry e = table[i];
+         *             if (e != null && e.get() == key)
+         *                 return e;
+         *             else
+         *                 return getEntryAfterMiss(key, i, e);
+         *         }
+         * 》》》》 hash 冲突的解决方案 ：链式地址法（hashmap）； 再哈希法 ；建立公共溢出区；
+         * 开放定址法(threadlocal使用开放定址法中的线性探测
+         * 如果个位置的值已经存在了，那么就在原来的值上往后加一个单位，直至不发生哈希冲突，就像这样的：) ；
+         *      private Entry getEntryAfterMiss(ThreadLocal<?> key, int i, Entry e) {
+         *             Entry[] tab = table;
+         *             int len = tab.length;
+         *
+         *             while (e != null) {
+         *                 ThreadLocal<?> k = e.get();
+         *                 if (k == key)
+         *                     return e;
+         *                 if (k == null)
+         *                 w针对内存泄漏做的一些改进  ，这些代码还没看太明白
+         *                     expungeStaleEntry(i);
+         *                 else
+         *                     i = nextIndex(i, len);
+         *                 e = tab[i];
+         *             }
+         *             return null;
+         *         }
+         */
         if (ret == null) {
             ret = new InternalThreadLocalMap();
             slowThreadLocalMap.set(ret);
@@ -158,7 +192,8 @@ public final class InternalThreadLocalMap {
         newCapacity |= newCapacity >>> 8;
         newCapacity |= newCapacity >>> 16;
         newCapacity++;
-
+        //扩容就是变成原来大小的 2 倍,把原数组里面的值拷贝到新的数组里面去。
+        //剩下的部分用 UNSET 填充。最后把我们传进来的 value 放到指定位置上。
         Object[] newArray = Arrays.copyOf(oldArray, newCapacity);
         Arrays.fill(newArray, oldCapacity, newArray.length, UNSET);
         newArray[index] = value;

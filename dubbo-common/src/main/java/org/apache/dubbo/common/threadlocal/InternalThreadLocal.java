@@ -30,6 +30,17 @@ import java.util.Set;
  * table, and it is useful when accessed frequently.
  * <p></p>
  * This design is learning from {@see io.netty.util.concurrent.FastThreadLocal} which is in Netty.
+ * 使用的是数组，通过下标定位，非常快；扩容的的时候直接搞个扩大一倍的数组，然后copy原数组，多余位置用指定对象填充
+ * threadlocal 内部使用hashcode去取值，多了一步计算，用hashcode 必然会遇到hash冲突，还要解决冲突；如果要扩容，扩容之后还要rehash
+ *
+ * InternalThreadLocalMap 看着名字是map，其实是一个数组   new Object[32];
+ * 使用internalthreadlocal时候线程是internalthread才能达到效果，否则还是走的threadlocal逻辑，参见get方法
+ * Thread thread = Thread.currentThread();
+ *         if (thread instanceof InternalThread) {
+ *             return fastGet((InternalThread) thread);
+ *         }
+ *         return slowGet();
+ *     与之同时 NamedThreadFactory 变化为了 NamedInternalThreadFactory 为了使用internalthread
  */
 public class InternalThreadLocal<V> {
 
@@ -146,7 +157,9 @@ public class InternalThreadLocal<V> {
             remove();
         } else {
             InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
+            //localmap中设置值 ，放得下就直接设置，发不下就扩容
             if (threadLocalMap.setIndexedVariable(index, value)) {
+                //数组的第一个位置维护当前线程里面的所有的 InternalThreadLocalMap
                 addToVariablesToRemove(threadLocalMap, this);
             }
         }

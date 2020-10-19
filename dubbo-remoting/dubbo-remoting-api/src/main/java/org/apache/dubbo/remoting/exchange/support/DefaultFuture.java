@@ -76,22 +76,34 @@ public class DefaultFuture extends CompletableFuture<Object> {
         this.executor = executor;
     }
 
-    /**
+    /**服务调用的时候，消费端通过代理队形proxy发起远程调用，通过网络客户端将编码后的请求发送给服务端提供方的网络上，
+     * server对数据包解码，请求分发的到dispatcher，再派发到线程池，线程池调用具体的服务
+     * dubbo 默认使用javassit（还可配置使用jdk 的）生成代理对象；
+     *支持异步，同步；默认同步调用。异步调用分为有返回值和无返回值的调用，无返回值，消费方只调用不关心结果，dubbo返回一个空的rpcresult
+     * 使用异步的话需要消费方配置
+     * demoservice 会实现一个echoservice接口  用于回声测试
      * 每发送一次请求，会创建一个Request，默认会带有一个递增的id，并且再创建一个DefaultFuture，并保存request和channel的信息
      * DefaultFuture主要是用来保存当次请求对应的Request信息和Channel信息
      * Dubbo在请求的时候，会赋予当前请求一个id，将这个id放到请求中发送出去，
      * 当收到返回结果的时候，也会带上请求的id，然后本地获取DefaultFuture，便可知道是哪次请求的了
-     *
-     * @param request
-     * @param timeout
      */
+    //服务提供者比服务消费者多吧。一个服务消费方可能会并发调用多个服务提供者，每个用户线程发送请求后，会进行超时时间内的等待。
+    // 多个服务提供者可能同时做完业务，然后返回，
+    // 服务消费方的线程池会收到多个响应对象。
+    // 这个时候要考虑一个问题，如何将线程池里面的每个响应对象传递给相应等待的用户线程，且不出错呢？
+    //在request对象中 newid  atomiclong 类型  见官网dubbo协议中存有8个字节的请求编号
+   // getAndIncrement() When it grows to MAX_VALUE,it will grow to MIN_VALUE,and the negative can be used as ID
+     //*return INVOKE_ID.getAndIncrement();
+    // * @param request
+    // * @param timeout
+    // */
     private DefaultFuture(Channel channel, Request request, int timeout) {
         this.channel = channel;
         this.request = request;
         this.id = request.getId();
         this.timeout = timeout > 0 ? timeout : channel.getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
         // put into waiting map.
-        FUTURES.put(id, this);
+        FUTURES.put(id, this);//放到concurrenthashmap
         CHANNELS.put(id, channel);
     }
 
