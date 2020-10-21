@@ -95,7 +95,12 @@ final class NettyCodecAdapter {
                 org.apache.dubbo.remoting.buffer.ChannelBuffers.EMPTY_BUFFER;
 
         @Override
+        //解析消息
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent event) throws Exception {
+            //判断当前decoder对象的buffer中是否有可以读取的消息，
+            // 如果有则进行合并，并且把对象引用赋予message局部变量，
+            // 所以message则获取了当前channel的inbound消息。
+
             Object o = event.getMessage();
             if (!(o instanceof ChannelBuffer)) {
                 ctx.sendUpstream(event);
@@ -131,6 +136,10 @@ final class NettyCodecAdapter {
 
             try {
                 // decode object.
+                // 得到inbound消息之后，那么接下来就是对协议的解析
+                // 把当前message的读索引保存到局部变量saveReaderIndex中，
+                // 用于后面的消息回滚。后面紧接着是对消息的decode，
+                // 这里的codec是DubboCountCodec对象实体，这里需要注意一点，DubboCountCodec的decode每次只会解析出一个完整的dubbo协议栈
                 do {
                     saveReaderIndex = message.readerIndex();
                     try {
