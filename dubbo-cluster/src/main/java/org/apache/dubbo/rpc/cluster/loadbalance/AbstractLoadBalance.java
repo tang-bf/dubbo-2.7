@@ -84,6 +84,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
         URL url = invoker.getUrl();
         // Multiple registry scenario, load balance among multiple registries.
         if (REGISTRY_SERVICE_REFERENCE_PATH.equals(url.getServiceInterface())) {
+            //权重默认为100
             weight = url.getParameter(REGISTRY_KEY + "." + WEIGHT_KEY, DEFAULT_WEIGHT);
         } else {
             weight = url.getMethodParameter(invocation.getMethodName(), WEIGHT_KEY, DEFAULT_WEIGHT);
