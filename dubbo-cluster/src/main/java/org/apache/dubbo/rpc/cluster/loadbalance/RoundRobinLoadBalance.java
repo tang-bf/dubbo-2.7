@@ -85,7 +85,13 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
         }
         return null;
     }
-
+    /*加权轮询算法一个明显的缺陷。即在某些特殊的权重下，加权轮询调度会生成不均匀的实例序列，
+    这种不平滑的负载可能会使某些实例出现瞬时高负载的现象，导致系统存在宕机的风险。
+    平滑加权轮询  借助了NGINX平滑加权算法
+    每个服务器有两个权重，一个是配置的weight，不会变化，一个是currentweight会动态调整，初始为0，
+    当新的请求过来时，遍历服务器列表，让它的currentweight加上自身的权重。遍历完成后，找到最大的currentweight
+    将其减去权重总和，然后返回对应的服务器即可。
+     */
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         String key = invokers.get(0).getUrl().getServiceKey() + "." + invocation.getMethodName();

@@ -35,7 +35,14 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ShortestResponseLoadBalance extends AbstractLoadBalance {
 
     public static final String NAME = "shortestresponse";
-
+/*
+    最短响应时间负载均衡
+    从多个服务提供者中选择出调用成功的且响应时间最短的服务提供者，
+    由于满足这样条件的服务提供者有可能有多个。所以当选择出多个服务提供者后要根据他们的权重做分析。
+    但是如果只选择出来了一个，直接用选出来这个。
+    如果真的有多个，看它们的权重是否一样，如果不一样，则走加权随机算法的逻辑。
+    如果它们的权重是一样的，则随机调用一个。
+ */
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         // Number of invokers
