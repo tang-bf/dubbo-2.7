@@ -128,6 +128,13 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
      * @param selected    exclude selected invokers or not
      * @return the invoker which will final to do invoke.
      * @throws RpcException exception
+     *
+     * sticky 一个服务治理类型的参数。当设置true时，该接口上的所有方法使用同一个provider。官方文档中说明可以用在接口和方法级别。
+     * 这些都是一些比较简单的服务治理的规则。如果需求更复杂，则需要使用路由功能。
+     * 粘滞连接用于有状态服务（从客户端发起的两个或者多个请求，在服务端是否具备上下文关系。）。 比如session
+     * 把一个有状态的服务修改为无状态的服务的方案也很简单。还是拿session举例，
+     * 这个时候，我们的分布式session就呼之欲出了。
+     * 把session集中存储起来，比如放到redis中，弄一个独立于服务的session共享层。这样，一个有状态的服务就可以变为一个无状态的服务。
      */
     protected Invoker<T> select(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected) throws RpcException {
@@ -136,7 +143,9 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
             return null;
         }
         String methodName = invocation == null ? StringUtils.EMPTY_STRING : invocation.getMethodName();
+        /*获取sticky的值，让服务消费方尽可能的调用同一个提供者  除非挂了再切换
 
+         */
         boolean sticky = invokers.get(0).getUrl()
                 .getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -150,7 +159,30 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
                 return stickyInvoker;
             }
         }
-
+        //invocation：它持有调用过程中的变量，比如方法名，参数等。
+        //invokers：这里的invokers列表可以看做是存活着的服务提供者列表。
+        //selected：已经被选择过的invoker集合。
+        //①：通过负载均衡组件选择 Invoker。
+        //②：如果选出来的 Invoker 不稳定，或不可用，此时需要调用reselect 方法进行重选。
+        //③：reselect选出来的Invoker为空，此时定位invoker在invokers列表中的位置index，然后获取index+1处的 invoker。
+        /**
+         * .粘滞连接在Cluster中是怎么应用的？
+         *
+         * 参照AbstractClusterInvoker select源码解析。select方法的主要逻辑集中在了对粘滞连接特性的支持上。
+         * Cluster选择出一个可用的Invoker最多要进行几次选择？
+         * ①：通过负载均衡组件选择 Invoker。
+         * ②：如果选出来的 Invoker 不稳定，或不可用，此时需要调用reselect 方法进行重选。
+         * ③：reselect选出来的Invoker为空，此时定位invoker在invokers列表中的位置index，然后获取index+1处的 invoker。
+         * Invoker 是 Provider 的一个可调用 Service 的抽象，Invoker 封装了 Provider 地址及 Service 接口信息
+         * Directory 代表多个 Invoker，可以把它看成 List<Invoker> ，但与 List 不同的是，它的值可能是动态变化的，比如注册中心推送变更
+         * Cluster 将 Directory 中的多个 Invoker 伪装成一个 Invoker，对上层透明，伪装过程包含了容错逻辑，调用失败后，重试另一个
+         * Router 负责从多个 Invoker 中按路由规则选出子集，比如读写分离，应用隔离等
+         * LoadBalance 负责从多个 Invoker 中选出具体的一个用于本次调用，选的过程包含了负载均衡算法，调用失败后，需要重选
+         * 调用关系是:cluster->directory->router->loadbalance->invoker:
+         * 该类是静态的,不会发生变化的,所以它用的是比较少,主要是用来在服务对多注册中心的引用.
+         * RegistryDirectory它是真正实现了服务的注册和动态变化的通知,它主要是为了获取一组可用的服务列表.
+         * router:通过某种过滤规则,把directory获取到的invoker列表进行了筛选,获取到一个可执行的子集invokers.
+         */
         Invoker<T> invoker = doSelect(loadbalance, invocation, invokers, selected);
 
         if (sticky) {

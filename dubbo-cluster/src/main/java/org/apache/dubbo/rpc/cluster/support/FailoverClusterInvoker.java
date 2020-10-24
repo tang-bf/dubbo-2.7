@@ -59,7 +59,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
         checkInvokers(copyInvokers, invocation);
         String methodName = RpcUtils.getMethodName(invocation);
         int len = getUrl().getMethodParameter(methodName, RETRIES_KEY, DEFAULT_RETRIES) + 1;
-        if (len <= 0) {
+        if (len <= 0) {//防御性编程  计算配置的重试次数为负数，也会只调用一次
             len = 1;
         }
         // retry loop.
@@ -70,16 +70,25 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
             if (i > 0) {
+                //在进行重试前，重新获取最新的invoker集合，这样做的好处是，
+                // 如果在重试的过程中某个服务挂了，可以通过调用list方法可以保证copyInvokers是最新的可用的invoker列表。
+                //重试的时候获取最新的invoker集合，防止在重试的过程中某个服务挂了
+                //通过list方法保证copyInvokers 是最新的可用的invokers
                 checkWhetherDestroyed();
                 copyInvokers = list(invocation);
                 // check again
                 checkInvokers(copyInvokers, invocation);
             }
+            //通过一个负载均衡策略选择一个invoker
             Invoker<T> invoker = select(loadbalance, invocation, copyInvokers, invoked);
+            //维护已经调用过的invoker集合
             invoked.add(invoker);
+            //invokered 加到rpccontext上下文中
             RpcContext.getContext().setInvokers((List) invoked);
             try {
                 Result result = invoker.invoke(invocation);
+                //上一次的异常情况  看到le定义为null呀，是在哪改变值的呢
+                //哦 是在这次调用异常后悔赋值 循环下一次重试就回你打印出来异常信息
                 if (le != null && logger.isWarnEnabled()) {
                     logger.warn("Although retry the method " + methodName
                             + " in the service " + getInterface().getName()
