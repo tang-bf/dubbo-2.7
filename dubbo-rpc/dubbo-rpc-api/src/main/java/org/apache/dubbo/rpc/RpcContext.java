@@ -55,6 +55,13 @@ public class RpcContext {
     /**
      *
      * use internal thread local to improve performance
+     * 作为一个 Dubbo 应用，它既可能是发起请求的消费者，也可能是接收请求的提供者。
+     * 每一次发起或者收到 RPC 调用的时候，上下文信息都会发生变化。
+     * 比如说：A 调用 B，B 调用 C。这个时候 B 既是消费者也是提供者。
+     * 那么当 A 调用 B，B 还是没调用 C 之前，RpcContext 里面保存的是 A 调用 B 的上下文信息。
+     * 当 B 开始调用 C 了，说明 A 到 B 之前的调用已经完成了，那么之前的上下文信息就应该清除掉。
+     * 这时 RpcContext 里面保存的应该是 B 调用 C 的上下文信息。否则会出现上下文污染的情况。
+     * 而这个上下文信息，就是维护在当前线程的 InternalThreadLocal 里面的。这个对象是在 ContextFilter 这个拦截器维护的。
      */
     // FIXME REQUEST_CONTEXT  老版本用的是threadlocal
     // InternalThreadLocal 来源基于netty  可看到https://github.com/apache/dubbo/pull/1745·提交中有netty之父  还有apache公司的一个对话
